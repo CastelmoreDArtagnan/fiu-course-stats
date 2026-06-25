@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIU Stats For Good</title>
+  <style>
+    :root {
+      --fiu-blue: #081E3F;
+      --fiu-gold: #B6862C;
+      --bg-light: #f4f4f9;
+      --text-dark: #333;
+      --rank-a: #2e7d32; 
+      --rank-b: #f57f17; 
+      --rank-c: #c62828; 
+      --rank-na: #757575; 
+    }
+    
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background-color: var(--bg-light);
+      color: var(--text-dark);
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Modal Styling */
+    #welcomeModal {
+      display: none; 
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 2.5rem;
+      border-radius: 10px;
+      max-width: 600px;
+      width: 90%;
+      text-align: center;
+      position: relative;
+      border-top: 8px solid var(--fiu-gold);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .close-btn {
+      position: absolute;
+      top: 15px; right: 20px;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--fiu-blue);
+      font-weight: bold;
+    }
+    .modal-subtitle { color: var(--fiu-gold); font-weight: bold; margin-bottom: 1.5rem;}
+    .legal-text { font-size: 0.8rem; color: #666; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1rem;}
+
+    /* Header Styling */
+    header {
+      background-color: var(--fiu-blue);
+      color: white;
+      padding: 3rem 1rem;
+      text-align: center;
+      border-bottom: 6px solid var(--fiu-gold);
+    }
+    header h1 { margin: 0; font-size: 2.2rem; }
+    header h2 { margin: 5px 0 0 0; font-size: 1.5rem; color: var(--fiu-gold); }
+    header h3 { margin: 5px 0 20px 0; font-size: 1rem; font-weight: normal; font-style: italic; opacity: 0.9;}
+
+    /* Search Container */
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+    
+    .search-wrapper { position: relative; margin-bottom: 2rem; }
+    input {
+      width: 100%;
+      padding: 1.2rem;
+      font-size: 1.2rem;
+      border: 2px solid var(--fiu-blue);
+      border-radius: 8px;
+      box-sizing: border-box;
+      outline: none;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    input:focus { border-color: var(--fiu-gold); }
+    
+    /* Autocomplete Dropdown */
+    #dropdown {
+      display: none;
+      position: absolute;
+      top: 100%; left: 0; right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      max-height: 250px;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    .dropdown-item {
+      padding: 1rem;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+    .dropdown-item:hover { background-color: var(--bg-light); color: var(--fiu-blue); font-weight: bold;}
+    
+    /* Results Styling */
+    .card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 1.5rem;
+      border-left: 6px solid var(--fiu-gold);
+    }
+    .spacer { margin: 2rem 0; border-bottom: 2px solid #eee; }
+    
+    /* Rank Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      color: white;
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-left: 10px;
+    }
+    .badge-A { background-color: var(--rank-a); }
+    .badge-B { background-color: var(--rank-b); }
+    .badge-C { background-color: var(--rank-c); }
+    .badge-NA { background-color: var(--rank-na); }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
+    th { background-color: var(--fiu-blue); color: white; }
+    tr:nth-child(even) { background-color: #fafafa; }
+  </style>
+</head>
+<body>
+
+  <div id="welcomeModal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">✖</span>
+      <h2 style="color: var(--fiu-blue); margin-top:0;">Welcome To FIU StatsForGood</h2>
+      <p class="modal-subtitle">This Website Was Designed for Students by Students<br>(aka. the Hat Guy)</p>
+      <p>Here you will find the GPA average for every class at FIU for each academic year AND every professor and instructor's average class GPA over the same timeline.</p>
+      <p>This is designed such that you can find those easy electives, choose the most helpful professor, or if you are faculty reading this, please see which instructors are doing best such that their teaching style/method can be mirrored.</p>
+      <p><em>*SPOTS Data Coming Soon for a full StatsForGood Ranking system.</em></p>
+      <p class="legal-text">
+        <strong>Disclaimer:</strong> This is not in any way shape or form an official site of the university. The owner, and creator, of this web app claims zero liability in perpetuity for all data herein. By clicking the 'X' in the top right you agree not to sue me. Further, all data herein was taken from public record and is considered legally the redistribution of public record. A special thank you to FIU AIM!
+      </p>
+    </div>
+  </div>
+
+  <header>
+    <h1>Florida International University</h1>
+    <h2>FIU Stats For Good</h2>
+    <h3>By The Hat Guy</h3>
+    <p>Type Something :3 <br><small>(e.g., Search "EML", "EML 3126", or "Aaliyah Gray")</small></p>
+  </header>
+
+  <div class="container">
+    <div class="search-wrapper">
+      <input type="text" id="searchBar" placeholder="Search a Department, Course, or Instructor..." autocomplete="off">
+      <div id="dropdown"></div>
+    </div>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    if (!localStorage.getItem('hideWelcome')) {
+      document.getElementById('welcomeModal').style.display = 'flex';
+    }
+    function closeModal() {
+      document.getElementById('welcomeModal').style.display = 'none';
+      localStorage.setItem('hideWelcome', 'true');
+    }
+
+    let db = {};
+    let searchIndex = [];
+    let profMap = {}; // Will hold courses linked to each professor
+
+    fetch('fiu_data.json')
+      .then(res => res.json())
+      .then(data => { 
+        db = data.departments; 
+        buildSearchIndex();
+      })
+      .catch(err => console.error("Data load failed. Run process_data.py first.", err));
+
+    function buildSearchIndex() {
+      for (const dept in db) {
+        searchIndex.push({ type: 'Department', text: dept, id: dept });
+        
+        for (const course in db[dept].courses) {
+          searchIndex.push({ type: 'Course', text: course, id: course, dept: dept });
+          
+          for (const prof in db[dept].courses[course].professors) {
+            // Group the courses by professor name
+            if (!profMap[prof]) profMap[prof] = [];
+            profMap[prof].push({ 
+                dept: dept, 
+                course: course, 
+                data: db[dept].courses[course].professors[prof] 
+            });
+          }
+        }
+      }
+      
+      // Add all unique professors to the searchable index
+      for (const prof in profMap) {
+        searchIndex.push({ type: 'Instructor', text: prof, id: prof });
+      }
+    }
+
+    const searchBar = document.getElementById('searchBar');
+    const dropdown = document.getElementById('dropdown');
+    const resultsDiv = document.getElementById('results');
+
+    // Helper function to reset the search bar after a selection
+    function resetSearchBar() {
+        searchBar.value = '';
+        searchBar.placeholder = 'New Search?';
+    }
+
+    searchBar.addEventListener('input', (e) => {
+      const query = e.target.value.trim().toUpperCase();
+      dropdown.innerHTML = '';
+      resultsDiv.innerHTML = '';
+
+      if (query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      // Filter index based on user input
+      const matches = searchIndex.filter(item => item.text.toUpperCase().startsWith(query)).slice(0, 8); 
+      
+      if (matches.length > 0) {
+        dropdown.style.display = 'block';
+        matches.forEach(match => {
+          const div = document.createElement('div');
+          div.className = 'dropdown-item';
+          div.innerHTML = `<strong>${match.text}</strong> <small style="color:#666;">(${match.type})</small>`;
+          
+          div.onclick = () => {
+            dropdown.style.display = 'none';
+            if (match.type === 'Department') renderDepartment(match.id);
+            else if (match.type === 'Instructor') renderProfessor(match.id);
+            else renderCourse(match.dept, match.id);
+          };
+          dropdown.appendChild(div);
+        });
+      } else {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    // Pressing 'Enter' selects the top result automatically
+    searchBar.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const firstItem = dropdown.querySelector('.dropdown-item');
+            if (firstItem) {
+                firstItem.click(); // Programmatically click the top result
+            }
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+      if(e.target !== searchBar && e.target !== dropdown) dropdown.style.display = 'none';
+    });
+
+    function getBadge(rank) {
+      if(rank === "A") return `<span class="badge badge-A">Rank A (Top 40%)</span>`;
+      if(rank === "B") return `<span class="badge badge-B">Rank B (Middle 30%)</span>`;
+      if(rank === "C") return `<span class="badge badge-C">Rank C (Bottom 30%)</span>`;
+      return `<span class="badge badge-NA">Rank N/A</span>`;
+    }
+
+    function renderDepartment(deptCode) {
+      const deptData = db[deptCode];
+      let html = `<div class="card">
+                    <h2 style="margin-top:0;">Department: ${deptCode}</h2>
+                    <p>Overall Department Historic GPA: <strong>${deptData.department_gpa}</strong></p>
+                  </div><div class="spacer"></div><h3>Courses within ${deptCode}</h3>`;
+      
+      for (const [courseCode, courseData] of Object.entries(deptData.courses)) {
+        html += `<div class="card" style="cursor:pointer;" onclick="renderCourse('${deptCode}', '${courseCode}')">
+                   <h3 style="margin-top:0;">${courseCode} ${getBadge(courseData.stats_rank)}</h3>
+                   <p>Historic Average GPA: <strong>${courseData.historic_gpa}</strong></p>
+                   <small style="color:var(--fiu-blue);">Click to view instructor breakdown &rarr;</small>
+                 </div>`;
+      }
+      resultsDiv.innerHTML = html;
+      resetSearchBar();
+    }
+
+    function renderCourse(deptCode, courseCode) {
+      const courseData = db[deptCode].courses[courseCode];
+      
+      let html = `<div class="card">
+                    <h2 style="margin-top:0;">${courseCode} ${getBadge(courseData.stats_rank)}</h2>
+                    <p>Average Historic GPA: <strong>${courseData.historic_gpa}</strong></p>
+                    <p>SPOT Quality Survey: <strong>${courseData.spot_score}</strong></p>
+                  </div>
+                  <h3 style="margin-top: 2rem;">Instructor Breakdown</h3>
+                  <table>
+                    <tr>
+                      <th>Professor</th>
+                      <th>Stats Rank</th>
+                      <th>Overall GPA</th>
+                      <th>Total Graded</th>
+                      <th>Students w/ A's</th>
+                      <th>Students w/ B's</th>
+                    </tr>`;
+
+      const profEntries = Object.entries(courseData.professors).sort((a, b) => parseFloat(b[1].overall_gpa || 0) - parseFloat(a[1].overall_gpa || 0));
+
+      for (const [profName, profData] of profEntries) {
+        html += `<tr style="cursor:pointer;" onclick="renderProfessor('${profName}')">
+                   <td style="color:var(--fiu-blue);"><strong>${profName}</strong></td>
+                   <td>${getBadge(profData.stats_rank)}</td>
+                   <td><strong>${profData.overall_gpa}</strong></td>
+                   <td>${profData.total_graded}</td>
+                   <td style="color:var(--rank-a); font-weight:bold;">${profData.a_pct}</td>
+                   <td style="color:var(--rank-b); font-weight:bold;">${profData.b_pct}</td>
+                 </tr>`;
+      }
+      html += `</table>`;
+      resultsDiv.innerHTML = html;
+      resetSearchBar();
+    }
+
+    function renderProfessor(profName) {
+      const coursesTaught = profMap[profName];
+      let html = `<div class="card">
+                    <h2 style="margin-top:0;">Instructor: ${profName}</h2>
+                  </div>
+                  <div class="spacer"></div>
+                  <h3>Courses Taught by ${profName}</h3>`;
+
+      // Display every course this specific professor teaches
+      coursesTaught.forEach(item => {
+          html += `<div class="card" style="cursor:pointer;" onclick="renderCourse('${item.dept}', '${item.course}')">
+                     <h3 style="margin-top:0;">${item.course} ${getBadge(item.data.stats_rank)}</h3>
+                     <p>Instructor GPA for this Course: <strong>${item.data.overall_gpa}</strong></p>
+                     <p>Total Graded: <strong>${item.data.total_graded}</strong> | A's: <span style="color:var(--rank-a); font-weight:bold;">${item.data.a_pct}</span> | B's: <span style="color:var(--rank-b); font-weight:bold;">${item.data.b_pct}</span></p>
+                     <small style="color:var(--fiu-blue);">Click to view full course comparison &rarr;</small>
+                   </div>`;
+      });
+      
+      resultsDiv.innerHTML = html;
+      resetSearchBar();
+    }
+  </script>
+</body>
+</html>
