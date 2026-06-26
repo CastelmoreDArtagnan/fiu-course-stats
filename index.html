@@ -38,13 +38,16 @@
     .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 1.5rem; border-left: 6px solid var(--fiu-gold); }
     .spacer { margin: 2rem 0; border-bottom: 2px solid #eee; }
     
-    /* Dashboard Stats Box Layout */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin: 15px 0; }
-    .stat-box { background-color: var(--bg-light); padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center; }
-    .stat-label { font-size: 0.85rem; color: #666; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px; }
-    .stat-value { font-size: 1.4rem; font-weight: bold; color: var(--fiu-blue); margin-bottom: 8px; }
+    /* New Symmetrical Flexbox Layout */
+    .stats-container { display: flex; justify-content: space-between; align-items: flex-start; background-color: var(--bg-light); padding: 20px 25px; border-radius: 8px; border: 1px solid #e0e0e0; margin: 15px 0; }
+    .stat-left { text-align: left; }
+    .stat-right { text-align: right; }
+    .stat-label { font-size: 0.85rem; color: #666; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; letter-spacing: 0.5px; }
+    .stat-value { font-size: 1.5rem; font-weight: bold; color: var(--fiu-blue); margin-bottom: 0; }
+    .stat-badge-wrapper { margin-top: 12px; }
+    .stat-badge-wrapper .badge { margin-left: 0; /* Override generic margin so it aligns flush left/right */ }
     
-    .badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px; color: white; font-weight: bold; font-size: 0.9rem; white-space: nowrap; }
+    .badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px; color: white; font-weight: bold; font-size: 0.9rem; margin-left: 10px; white-space: nowrap; }
     .badge-A, .badge-Excellent { background-color: var(--rank-a); }
     .badge-B, .badge-Good { background-color: var(--rank-b); }
     .badge-C, .badge-Needs { background-color: var(--rank-c); }
@@ -193,9 +196,12 @@
     document.addEventListener('click', (e) => { if(e.target !== searchBar && e.target !== dropdown) dropdown.style.display = 'none'; });
 
     function getBadge(rank) {
-      if(rank === "A") return `<span class="badge badge-A">Rank A</span>`;
-      if(rank === "B") return `<span class="badge badge-B">Rank B</span>`;
-      if(rank === "C") return `<span class="badge badge-C">Rank C</span>`;
+      if(rank === "A" || rank === "Excellent") return `<span class="badge badge-A">Rank: ${rank}</span>`;
+      if(rank === "B" || rank === "Good") return `<span class="badge badge-B">Rank: ${rank}</span>`;
+      if(rank === "C" || rank === "Needs Improvement") return `<span class="badge badge-C">Rank: ${rank}</span>`;
+      if(rank === "A" || rank === "A") return `<span class="badge badge-A">Rank A</span>`;
+      if(rank === "B" || rank === "B") return `<span class="badge badge-B">Rank B</span>`;
+      if(rank === "C" || rank === "C") return `<span class="badge badge-C">Rank C</span>`;
       return `<span class="badge badge-NA">Rank N/A</span>`;
     }
 
@@ -212,19 +218,19 @@
         const cTitle = courseData.course_name ? ` - ${courseData.course_name}` : '';
         html += `<div class="card clickable" onclick="renderCourse('${deptCode}', '${courseCode}')">
                    <h3 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">${courseCode}${cTitle}</h3>
-                   <div class="stats-grid">
-                       <div class="stat-box">
+                   <div class="stats-container">
+                       <div class="stat-left">
                            <div class="stat-label">Historic GPA</div>
                            <div class="stat-value">${courseData.historic_gpa}</div>
-                           ${getBadge(courseData.stats_rank)}
+                           <div class="stat-badge-wrapper">${getBadge(courseData.stats_rank)}</div>
                        </div>
-                       <div class="stat-box">
+                       <div class="stat-right">
                            <div class="stat-label">Overall SPOTs</div>
                            <div class="stat-value">${courseData.spot_score}</div>
-                           ${getBadge(courseData.spot_rank)}
+                           <div class="stat-badge-wrapper">${getBadge(courseData.spot_rank)}</div>
                        </div>
                    </div>
-                   <small style="color:var(--fiu-gold); font-weight:bold;">View instructor breakdown &rarr;</small>
+                   <small style="color:var(--fiu-gold); font-weight:bold; display:block; margin-top:15px;">View instructor breakdown &rarr;</small>
                  </div>`;
       }
       resultsDiv.innerHTML = html; resetSearchBar();
@@ -236,16 +242,16 @@
       const cTitle = courseData.course_name ? ` - ${courseData.course_name}` : '';
       let html = `<div class="card">
                     <h2 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">${courseCode}${cTitle}</h2>
-                    <div class="stats-grid">
-                       <div class="stat-box">
+                    <div class="stats-container">
+                       <div class="stat-left">
                            <div class="stat-label">Historic GPA</div>
                            <div class="stat-value">${courseData.historic_gpa}</div>
-                           ${getBadge(courseData.stats_rank)}
+                           <div class="stat-badge-wrapper">${getBadge(courseData.stats_rank)}</div>
                        </div>
-                       <div class="stat-box">
+                       <div class="stat-right">
                            <div class="stat-label">Overall SPOTs</div>
                            <div class="stat-value">${courseData.spot_score}</div>
-                           ${getBadge(courseData.spot_rank)}
+                           <div class="stat-badge-wrapper">${getBadge(courseData.spot_rank)}</div>
                        </div>
                     </div>
                   </div>
@@ -301,11 +307,11 @@
 
       let html = `<div class="card">
                     <h2 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">Instructor: ${profName}</h2>
-                    <div class="stats-grid" style="grid-template-columns: 1fr;">
-                       <div class="stat-box">
+                    <div class="stats-container">
+                       <div class="stat-left">
                            <div class="stat-label">Global SPOTs Average</div>
                            <div class="stat-value">${globalSpot}</div>
-                           ${getBadge(globalRank)}
+                           <div class="stat-badge-wrapper">${getBadge(globalRank)}</div>
                        </div>
                     </div>
                   </div>
@@ -316,20 +322,20 @@
           const cTitle = item.course_name ? ` - ${item.course_name}` : '';
           html += `<div class="card clickable" onclick="renderCourse('${item.dept}', '${item.course}')">
                      <h3 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">${item.course}${cTitle}</h3>
-                     <div class="stats-grid">
-                       <div class="stat-box">
+                     <div class="stats-container">
+                       <div class="stat-left">
                            <div class="stat-label">Instructor GPA</div>
                            <div class="stat-value">${item.data.overall_gpa}</div>
-                           ${getBadge(item.data.stats_rank)}
+                           <div class="stat-badge-wrapper">${getBadge(item.data.stats_rank)}</div>
                        </div>
-                       <div class="stat-box">
+                       <div class="stat-right">
                            <div class="stat-label">Course SPOTs</div>
                            <div class="stat-value">${item.data.spot_score}</div>
-                           ${getBadge(item.data.spot_rank)}
+                           <div class="stat-badge-wrapper">${getBadge(item.data.spot_rank)}</div>
                        </div>
                      </div>
-                     <p>Total Graded: <strong>${item.data.total_graded}</strong> | A's: <span style="color:var(--rank-a); font-weight:bold;">${item.data.a_pct}</span> | B's: <span style="color:var(--rank-b); font-weight:bold;">${item.data.b_pct}</span></p>
-                     <small style="color:var(--fiu-gold); font-weight:bold;">View full course comparison &rarr;</small>
+                     <p style="margin-bottom:5px;">Total Graded: <strong>${item.data.total_graded}</strong> | A's: <span style="color:var(--rank-a); font-weight:bold;">${item.data.a_pct}</span> | B's: <span style="color:var(--rank-b); font-weight:bold;">${item.data.b_pct}</span></p>
+                     <small style="color:var(--fiu-gold); font-weight:bold; display:block; margin-top:10px;">View full course comparison &rarr;</small>
                    </div>`;
       });
       resultsDiv.innerHTML = html; resetSearchBar();
