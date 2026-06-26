@@ -36,15 +36,19 @@
     .dropdown-item:hover { background-color: var(--bg-light); color: var(--fiu-blue); font-weight: bold;}
     
     .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 1.5rem; border-left: 6px solid var(--fiu-gold); }
-    .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
     .spacer { margin: 2rem 0; border-bottom: 2px solid #eee; }
     
-    .badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px; color: white; font-weight: bold; font-size: 0.9rem; margin-left: 10px; white-space: nowrap; }
+    /* Dashboard Stats Box Layout */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin: 15px 0; }
+    .stat-box { background-color: var(--bg-light); padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center; }
+    .stat-label { font-size: 0.85rem; color: #666; text-transform: uppercase; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px; }
+    .stat-value { font-size: 1.4rem; font-weight: bold; color: var(--fiu-blue); margin-bottom: 8px; }
+    
+    .badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px; color: white; font-weight: bold; font-size: 0.9rem; white-space: nowrap; }
     .badge-A, .badge-Excellent { background-color: var(--rank-a); }
     .badge-B, .badge-Good { background-color: var(--rank-b); }
     .badge-C, .badge-Needs { background-color: var(--rank-c); }
     .badge-NA { background-color: var(--rank-na); }
-    .spot-text { color: #555; font-size: 0.95rem; margin-top: 5px;}
 
     /* Responsive Table Styles */
     .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -57,26 +61,10 @@
     .ta-disclaimer { background-color: #fff3cd !important; color: #856404; text-align: center; font-size: 0.85rem; font-style: italic; }
 
     /* Mobile Swipe Animation */
-    .swipe-hint {
-      display: none;
-      background-color: rgba(182, 134, 44, 0.1);
-      color: var(--fiu-blue);
-      text-align: center;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      font-weight: bold;
-      font-size: 0.9rem;
-      border: 1px dashed var(--fiu-gold);
-    }
+    .swipe-hint { display: none; background-color: rgba(182, 134, 44, 0.1); color: var(--fiu-blue); text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; font-size: 0.9rem; border: 1px dashed var(--fiu-gold); }
     .swipe-hint span { display: inline-block; animation: swipe-move 1.5s infinite; }
-    @keyframes swipe-move {
-      0%, 100% { transform: translateX(0); }
-      50% { transform: translateX(-8px); }
-    }
-    @media (max-width: 768px) {
-      .swipe-hint { display: block; }
-    }
+    @keyframes swipe-move { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-8px); } }
+    @media (max-width: 768px) { .swipe-hint { display: block; } }
   </style>
 </head>
 <body>
@@ -214,13 +202,29 @@
     window.renderDepartment = function(deptCode, isBackNav = false) {
       if(!isBackNav) pushState('renderDepartment', [deptCode]);
       const deptData = db[deptCode];
-      let html = `<div class="card"><h2 style="margin-top:0;">Department: ${deptCode}</h2><p>Overall Department Historic GPA: <strong>${deptData.department_gpa}</strong></p></div><div class="spacer"></div><h3>Courses within ${deptCode}</h3>`;
+      let html = `<div class="card">
+                    <h2 style="margin-top:0; color:var(--fiu-blue);">Department: ${deptCode}</h2>
+                    <p>Overall Department Historic GPA: <strong>${deptData.department_gpa}</strong></p>
+                  </div><div class="spacer"></div>
+                  <h3>Courses within ${deptCode}</h3>`;
+                  
       for (const [courseCode, courseData] of Object.entries(deptData.courses)) {
         const cTitle = courseData.course_name ? ` - ${courseData.course_name}` : '';
         html += `<div class="card clickable" onclick="renderCourse('${deptCode}', '${courseCode}')">
-                   <h3 style="margin-top:0; color:var(--fiu-blue);">${courseCode}${cTitle} ${getBadge(courseData.stats_rank)}</h3>
-                   <p>Historic Average GPA: <strong>${courseData.historic_gpa}</strong> | Overall SPOTs: <strong>${courseData.spot_score}</strong> ${getBadge(courseData.spot_rank)}</p>
-                   <small style="color:#666;">Click to view instructor breakdown &rarr;</small>
+                   <h3 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">${courseCode}${cTitle}</h3>
+                   <div class="stats-grid">
+                       <div class="stat-box">
+                           <div class="stat-label">Historic GPA</div>
+                           <div class="stat-value">${courseData.historic_gpa}</div>
+                           ${getBadge(courseData.stats_rank)}
+                       </div>
+                       <div class="stat-box">
+                           <div class="stat-label">Overall SPOTs</div>
+                           <div class="stat-value">${courseData.spot_score}</div>
+                           ${getBadge(courseData.spot_rank)}
+                       </div>
+                   </div>
+                   <small style="color:var(--fiu-gold); font-weight:bold;">View instructor breakdown &rarr;</small>
                  </div>`;
       }
       resultsDiv.innerHTML = html; resetSearchBar();
@@ -231,9 +235,19 @@
       const courseData = db[deptCode].courses[courseCode];
       const cTitle = courseData.course_name ? ` - ${courseData.course_name}` : '';
       let html = `<div class="card">
-                    <h2 style="margin-top:0;">${courseCode}${cTitle} ${getBadge(courseData.stats_rank)}</h2>
-                    <p>Average Historic GPA: <strong>${courseData.historic_gpa}</strong></p>
-                    <p>Overall SPOT Quality Survey: <strong>${courseData.spot_score}</strong> ${getBadge(courseData.spot_rank)}</p>
+                    <h2 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">${courseCode}${cTitle}</h2>
+                    <div class="stats-grid">
+                       <div class="stat-box">
+                           <div class="stat-label">Historic GPA</div>
+                           <div class="stat-value">${courseData.historic_gpa}</div>
+                           ${getBadge(courseData.stats_rank)}
+                       </div>
+                       <div class="stat-box">
+                           <div class="stat-label">Overall SPOTs</div>
+                           <div class="stat-value">${courseData.spot_score}</div>
+                           ${getBadge(courseData.spot_rank)}
+                       </div>
+                    </div>
                   </div>
                   <h3 style="margin-top: 2rem;">Instructor Breakdown</h3>
                   
@@ -286,11 +300,13 @@
       const globalRank = profDb[profName] ? profDb[profName].spot_rank : "N/A";
 
       let html = `<div class="card">
-                    <div class="card-header-row">
-                      <h2 style="margin-top:0;">Instructor: ${profName}</h2>
-                      <div style="text-align:right;">
-                        <strong>Global SPOTs Avg: ${globalSpot}</strong><br>${getBadge(globalRank)}
-                      </div>
+                    <h2 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">Instructor: ${profName}</h2>
+                    <div class="stats-grid" style="grid-template-columns: 1fr;">
+                       <div class="stat-box">
+                           <div class="stat-label">Global SPOTs Average</div>
+                           <div class="stat-value">${globalSpot}</div>
+                           ${getBadge(globalRank)}
+                       </div>
                     </div>
                   </div>
                   <div class="spacer"></div>
@@ -299,13 +315,21 @@
       coursesTaught.forEach(item => {
           const cTitle = item.course_name ? ` - ${item.course_name}` : '';
           html += `<div class="card clickable" onclick="renderCourse('${item.dept}', '${item.course}')">
-                     <div class="card-header-row">
-                         <h3 style="margin-top:0; color:var(--fiu-blue);">${item.course}${cTitle} ${getBadge(item.data.stats_rank)}</h3>
-                         <div style="text-align:right;" class="spot-text">Course SPOT: <strong>${item.data.spot_score}</strong> ${getBadge(item.data.spot_rank)}</div>
+                     <h3 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">${item.course}${cTitle}</h3>
+                     <div class="stats-grid">
+                       <div class="stat-box">
+                           <div class="stat-label">Instructor GPA</div>
+                           <div class="stat-value">${item.data.overall_gpa}</div>
+                           ${getBadge(item.data.stats_rank)}
+                       </div>
+                       <div class="stat-box">
+                           <div class="stat-label">Course SPOTs</div>
+                           <div class="stat-value">${item.data.spot_score}</div>
+                           ${getBadge(item.data.spot_rank)}
+                       </div>
                      </div>
-                     <p>Instructor GPA for this Course: <strong>${item.data.overall_gpa}</strong></p>
                      <p>Total Graded: <strong>${item.data.total_graded}</strong> | A's: <span style="color:var(--rank-a); font-weight:bold;">${item.data.a_pct}</span> | B's: <span style="color:var(--rank-b); font-weight:bold;">${item.data.b_pct}</span></p>
-                     <small style="color:#666;">Click to view full course comparison &rarr;</small>
+                     <small style="color:var(--fiu-gold); font-weight:bold;">View full course comparison &rarr;</small>
                    </div>`;
       });
       resultsDiv.innerHTML = html; resetSearchBar();
