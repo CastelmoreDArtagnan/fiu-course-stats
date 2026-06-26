@@ -54,8 +54,29 @@
     tr:nth-child(even) { background-color: #fafafa; }
     tr.clickable:hover { background-color: #e8f0fe; cursor: pointer; }
     
-    /* Discalimer Row Style */
     .ta-disclaimer { background-color: #fff3cd !important; color: #856404; text-align: center; font-size: 0.85rem; font-style: italic; }
+
+    /* Mobile Swipe Animation */
+    .swipe-hint {
+      display: none;
+      background-color: rgba(182, 134, 44, 0.1);
+      color: var(--fiu-blue);
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      border: 1px dashed var(--fiu-gold);
+    }
+    .swipe-hint span { display: inline-block; animation: swipe-move 1.5s infinite; }
+    @keyframes swipe-move {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(-8px); }
+    }
+    @media (max-width: 768px) {
+      .swipe-hint { display: block; }
+    }
   </style>
 </head>
 <body>
@@ -215,10 +236,11 @@
                     <p>Overall SPOT Quality Survey: <strong>${courseData.spot_score}</strong> ${getBadge(courseData.spot_rank)}</p>
                   </div>
                   <h3 style="margin-top: 2rem;">Instructor Breakdown</h3>
+                  
+                  <div class="swipe-hint"><span>👈</span> Swipe table to view more details</div>
                   <div class="table-responsive">
                   <table><tr><th>Professor</th><th>GPA Rank</th><th>Overall GPA</th><th>Total Graded</th><th>A's</th><th>B's</th><th>SPOT Score</th></tr>`;
 
-      // Smart sorting: Handles N/A strings by pushing them to the bottom, prioritizing numbers.
       const profEntries = Object.entries(courseData.professors).sort((a, b) => {
             let valA = parseFloat(a[1].overall_gpa);
             let valB = parseFloat(b[1].overall_gpa);
@@ -234,12 +256,10 @@
             return valB - valA;
       });
 
-      // Logic to determine if we need the TA divider
       let printedDivider = false;
       let hasRanked = profEntries.some(p => p[1].overall_gpa !== "N/A");
 
       for (const [profName, profData] of profEntries) {
-        // If we hit the first "N/A" GPA, and there were ranked professors before this, print the line once
         if (profData.overall_gpa === "N/A" && hasRanked && !printedDivider) {
             html += `<tr><td colspan="7" class="ta-disclaimer">Names below may or may not be TA's or FIU On-line Professors</td></tr>`;
             printedDivider = true;
