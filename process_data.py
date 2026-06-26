@@ -2,118 +2,208 @@ import pandas as pd
 import json
 import numpy as np
 
-def get_stats_rank(gpa, gpa_list):
-    """Calculates rank based on percentiles, ignoring blanks/NaNs."""
-    valid_gpas = [g for g in gpa_list if not pd.isna(g)]
-    if not valid_gpas or len(set(valid_gpas)) <= 1:
+# --- GPA COLUMN CONFIGURATION ---
+COL_COURSE = 'Course Listing'     
+COL_TERM = 'Semester'             
+COL_GPA = 'Average GPA'           
+COL_PROF = 'Professor'            
+
+# --- SPOT COLUMN CONFIGURATION ---
+SPOT_FILE = 'fiu_spots_data.csv'   
+SPOT_COL_COURSE = 'Subject + Catalog'         
+SPOT_COL_TITLE = 'Course Name'    
+SPOT_COL_PROF = 'Instructor Name'       
+SPOT_COL_EXC = 'Excellent'
+SPOT_COL_VG = 'Very Good'
+SPOT_COL_GOOD = 'Good'
+SPOT_COL_FAIR = 'Fair'
+SPOT_COL_POOR = 'Poor'
+
+def get_stats_rank(score, score_list):
+    """Calculates A/B/C rank, safely ignoring any N/A or NaN values."""
+    valid_scores = [s for s in score_list if not pd.isna(s) and s != "N/A"]
+    if not valid_scores or len(set(valid_scores)) <= 1 or pd.isna(score) or score == "N/A": 
         return "N/A"
     
-    p60 = np.percentile(valid_gpas, 60) # Top 40%
-    p30 = np.percentile(valid_gpas, 30) # Bottom 30%
+    p60 = np.percentile(valid_scores, 60)
+    p30 = np.percentile(valid_scores, 30)
     
-    if gpa >= p60: return "A"
-    elif gpa >= p30: return "B"
+    if score >= p60: return "A"
+    elif score >= p30: return "B"
     else: return "C"
 
+def flip_name(name):
+    """Detects 'Lastname, Firstname' and flips it to 'Firstname Lastname'."""
+    name = str(name).strip()
+    if ',' in name:
+        parts = name.split(',')
+        return f"{parts[1].strip()} {parts[0].strip()}"
+    return name
+
+def clean_pct(series):
+    """Strips % signs and converts text percentages to raw numbers."""
+    return pd.to_numeric(series.astype(str).str.replace('%', '', regex=False), errors='coerce').fillna(0)
+
+def robust_csv_load(filepath):
+    """Smart loader that tests multiple encodings and separators to crack large exports."""
+    encodings = ['utf-8', 'utf-16', 'utf-8-sig', 'latin1']
+    separators = [',', '\t']
+    
+    for enc in encodings:
+        for sep in separators:
+            try:
+                # on_bad_lines='skip' ensures that 1 broken row out of 300,000 won't crash the script
+                df = pd.read_csv(filepath, dtype=str, encoding=enc, sep=sep, on_bad_lines='skip')
+                # If it successfully split the data into multiple columns, we found the right combo!
+                if len(df.columns) > 1:
+                    print(f"  -> Success! Unlocked file using Encoding: {enc} | Separator: '{sep}'")
+                    return df
+            except Exception:
+                continue
+    raise ValueError(f"Could not decode {filepath}. Please open it in Excel and 'Save As -> CSV (Comma delimited)'")
+
 def build_database():
-    print("Loading 300,000+ row dataset into RAM...")
-    df = pd.read_csv('fiu_master_grade_distribution.csv', dtype=str)
-    
-    # 1. Clean the column names (Tableau leaves spaces like 'Academic Year ')
-    df.columns = df.columns.str.strip()
-    
-    print("Formatting and removing duplicates...")
-    # Drop rows without actual metric values
-    df.dropna(subset=['Measure Values'], inplace=True)
-    df['Measure Values'] = pd.to_numeric(df['Measure Values'], errors='coerce')
-    
-    # If the scraper accidentally duplicated a professor, this drops the duplicate rows
-    df.drop_duplicates(subset=['Academic Year', 'Course Listing', 'Measure Names', 'Professor'], inplace=True)
-    
-    print("Pivoting data to align grade columns...")
-    # Pivot the data so 'A Grades', 'B Grades', etc. become their own columns
-    pivot_df = df.pivot(
-        index=['Academic Year', 'Course Listing', 'Professor'], 
-        columns='Measure Names', 
-        values='Measure Values'
-    ).reset_index()
-    
-    # Extract Department Code
-    pivot_df['Department'] = pivot_df['Course Listing'].str.extract(r'^([A-Z]{3,4})')
-    
-    # Ensure all grade columns exist and fill blanks with 0
-    grade_cols = ['A Grades', 'B Grades', 'C Grades', 'D Grades', 'F Grades']
-    for col in grade_cols:
-        if col not in pivot_df.columns:
-            pivot_df[col] = 0
-        pivot_df[col] = pivot_df[col].fillna(0)
+    print("Loading GPA Database...")
+    try:
+        gpa_df = robust_csv_load('fiu_master_grade_distribution.csv')
+        gpa_df.columns = gpa_df.columns.str.strip()
+        gpa_df.dropna(subset=['Measure Values'], inplace=True)
+        gpa_df['Measure Values'] = pd.to_numeric(gpa_df['Measure Values'], errors='coerce')
+        gpa_df.drop_duplicates(subset=['Academic Year', 'Course Listing', 'Measure Names', 'Professor'], inplace=True)
+        
+        pivot_df = gpa_df.pivot(index=['Academic Year', 'Course Listing', 'Professor'], columns='Measure Names', values='Measure Values').reset_index()
+        pivot_df['Department'] = pivot_df['Course Listing'].str.extract(r'^([A-Z]{3,4})')
+        
+        for col in ['A Grades', 'B Grades', 'C Grades', 'D Grades', 'F Grades']:
+            if col not in pivot_df.columns: pivot_df[col] = 0
+            pivot_df[col] = pivot_df[col].fillna(0)
 
-    print("Calculating True GPAs...")
-    # Combine all academic years together for a true historical view of the professor per course
-    prof_course = pivot_df.groupby(['Department', 'Course Listing', 'Professor']).agg({
-        'A Grades': 'sum', 'B Grades': 'sum', 'C Grades': 'sum', 'D Grades': 'sum', 'F Grades': 'sum'
-    }).reset_index()
-    
-    # Calculate Grade Points
-    prof_course['Total Graded'] = prof_course['A Grades'] + prof_course['B Grades'] + prof_course['C Grades'] + prof_course['D Grades'] + prof_course['F Grades']
-    prof_course['Total Points'] = (prof_course['A Grades']*4 + prof_course['B Grades']*3 + prof_course['C Grades']*2 + prof_course['D Grades']*1)
-    
-    # Calculate GPA (Handling division by zero if nobody actually got graded)
-    prof_course['GPA'] = np.where(prof_course['Total Graded'] > 0, prof_course['Total Points'] / prof_course['Total Graded'], np.nan)
+        prof_course = pivot_df.groupby(['Department', 'Course Listing', 'Professor']).agg({
+            'A Grades': 'sum', 'B Grades': 'sum', 'C Grades': 'sum', 'D Grades': 'sum', 'F Grades': 'sum'
+        }).reset_index()
+        
+        prof_course['Total Graded'] = prof_course['A Grades'] + prof_course['B Grades'] + prof_course['C Grades'] + prof_course['D Grades'] + prof_course['F Grades']
+        prof_course['Total Points'] = (prof_course['A Grades']*4 + prof_course['B Grades']*3 + prof_course['C Grades']*2 + prof_course['D Grades']*1)
+        prof_course['GPA'] = np.where(prof_course['Total Graded'] > 0, prof_course['Total Points'] / prof_course['Total Graded'], np.nan)
 
-    # Roll up data to the Course level
-    course_agg = prof_course.groupby(['Department', 'Course Listing']).agg({'Total Graded': 'sum', 'Total Points': 'sum'}).reset_index()
-    course_agg['GPA'] = np.where(course_agg['Total Graded'] > 0, course_agg['Total Points'] / course_agg['Total Graded'], np.nan)
-    
-    # Roll up data to the Department level
-    dept_agg = course_agg.groupby('Department').agg({'Total Graded': 'sum', 'Total Points': 'sum'}).reset_index()
-    dept_agg['GPA'] = np.where(dept_agg['Total Graded'] > 0, dept_agg['Total Points'] / dept_agg['Total Graded'], np.nan)
+        course_agg = prof_course.groupby(['Department', 'Course Listing']).agg({'Total Graded': 'sum', 'Total Points': 'sum'}).reset_index()
+        course_agg['GPA'] = np.where(course_agg['Total Graded'] > 0, course_agg['Total Points'] / course_agg['Total Graded'], np.nan)
+        dept_agg = course_agg.groupby('Department').agg({'Total Graded': 'sum', 'Total Points': 'sum'}).reset_index()
+        dept_agg['GPA'] = np.where(dept_agg['Total Graded'] > 0, dept_agg['Total Points'] / dept_agg['Total Graded'], np.nan)
+        
+        dept_gpa_dict = dept_agg.set_index('Department')['GPA'].to_dict()
+        course_gpa_dict = course_agg.set_index('Course Listing')['GPA'].to_dict()
+        prof_course_dict = prof_course.set_index(['Course Listing', 'Professor']).to_dict('index')
+
+    except Exception as e:
+        print(f"Error loading GPA data: {e}")
+        dept_gpa_dict, course_gpa_dict, prof_course_dict, prof_course = {}, {}, {}, pd.DataFrame()
+
+    print("Loading SPOTs Database (This might take a moment for 400MB)...")
+    try:
+        spots_df = robust_csv_load(SPOT_FILE)
+        spots_df.columns = spots_df.columns.str.strip()
+        spots_df[SPOT_COL_PROF] = spots_df[SPOT_COL_PROF].apply(flip_name)
+        spots_df['Department'] = spots_df[SPOT_COL_COURSE].str.extract(r'^([A-Z]{3,4})')
+        
+        spots_df[SPOT_COL_EXC] = clean_pct(spots_df[SPOT_COL_EXC])
+        spots_df[SPOT_COL_VG] = clean_pct(spots_df[SPOT_COL_VG])
+        spots_df[SPOT_COL_GOOD] = clean_pct(spots_df[SPOT_COL_GOOD])
+        spots_df[SPOT_COL_FAIR] = clean_pct(spots_df[SPOT_COL_FAIR])
+        spots_df[SPOT_COL_POOR] = clean_pct(spots_df[SPOT_COL_POOR])
+        
+        spots_df['Calculated_Score'] = (
+            (spots_df[SPOT_COL_EXC] * 1.0) + (spots_df[SPOT_COL_VG] * 0.8) +
+            (spots_df[SPOT_COL_GOOD] * 0.6) + (spots_df[SPOT_COL_FAIR] * 0.35) + (spots_df[SPOT_COL_POOR] * 0.0)
+        )
+        
+        course_titles = spots_df.drop_duplicates(subset=[SPOT_COL_COURSE]).set_index(SPOT_COL_COURSE)[SPOT_COL_TITLE].to_dict()
+        prof_course_spot = spots_df.groupby([SPOT_COL_COURSE, SPOT_COL_PROF])['Calculated_Score'].mean().to_dict()
+        prof_global_spot = spots_df.groupby(SPOT_COL_PROF)['Calculated_Score'].mean().to_dict()
+        course_global_spot = spots_df.groupby(SPOT_COL_COURSE)['Calculated_Score'].mean().to_dict()
+    except Exception as e:
+        print(f"Error loading SPOTs data: {e}")
+        spots_df, course_titles, prof_course_spot, prof_global_spot, course_global_spot = pd.DataFrame(), {}, {}, {}, {}
+
+    print("Merging Universes (Building Master Hierarchy)...")
+    master_hierarchy = {}
+
+    if not prof_course.empty:
+        for _, row in prof_course.iterrows():
+            d, c, p = row['Department'], row['Course Listing'], row['Professor']
+            if pd.isna(d): continue
+            if d not in master_hierarchy: master_hierarchy[d] = {}
+            if c not in master_hierarchy[d]: master_hierarchy[d][c] = set()
+            master_hierarchy[d][c].add(p)
+
+    if not spots_df.empty:
+        for _, row in spots_df.iterrows():
+            d, c, p = row['Department'], row[SPOT_COL_COURSE], row[SPOT_COL_PROF]
+            if pd.isna(d) or pd.isna(c): continue
+            if d not in master_hierarchy: master_hierarchy[d] = {}
+            if c not in master_hierarchy[d]: master_hierarchy[d][c] = set()
+            master_hierarchy[d][c].add(p)
 
     print("Building JSON Database...")
-    database = {"departments": {}}
+    database = {"departments": {}, "professors": {}}
 
-    for dept in dept_agg['Department'].dropna():
-        dept_info = dept_agg[dept_agg['Department'] == dept].iloc[0]
+    all_global_spots = [s for s in prof_global_spot.values() if not pd.isna(s)]
+    for prof, score in prof_global_spot.items():
+        if not pd.isna(score):
+            database["professors"][prof] = {
+                "global_spot": f"{score:.1f}%", 
+                "spot_rank": get_stats_rank(score, all_global_spots)
+            }
+
+    for dept, courses in master_hierarchy.items():
+        d_gpa = dept_gpa_dict.get(dept, np.nan)
         database["departments"][dept] = {
-            "department_gpa": f"{dept_info['GPA']:.2f}" if not pd.isna(dept_info['GPA']) else "N/A",
+            "department_gpa": f"{d_gpa:.2f}" if not pd.isna(d_gpa) else "N/A",
             "courses": {}
         }
         
-        # Get all courses for this department to calculate percentiles
-        dept_courses = course_agg[course_agg['Department'] == dept]
-        dept_gpas = dept_courses['GPA'].tolist()
+        dept_course_gpas = [course_gpa_dict.get(c, np.nan) for c in courses.keys()]
+        dept_course_spots = [course_global_spot.get(c, np.nan) for c in courses.keys()]
         
-        for _, c_row in dept_courses.iterrows():
-            course_code = c_row['Course Listing']
-            c_gpa = c_row['GPA']
+        for course, profs in courses.items():
+            c_gpa = course_gpa_dict.get(course, np.nan)
+            c_spot = course_global_spot.get(course, np.nan)
+            title = course_titles.get(course, "")
             
-            database["departments"][dept]["courses"][course_code] = {
+            database["departments"][dept]["courses"][course] = {
+                "course_name": title,
                 "historic_gpa": f"{c_gpa:.2f}" if not pd.isna(c_gpa) else "N/A",
-                "stats_rank": get_stats_rank(c_gpa, dept_gpas),
-                "spot_score": "N/A",
+                "stats_rank": get_stats_rank(c_gpa, dept_course_gpas),
+                "spot_score": f"{c_spot:.1f}%" if not pd.isna(c_spot) else "N/A",
+                "spot_rank": get_stats_rank(c_spot, dept_course_spots),
                 "professors": {}
             }
             
-            # Get professors for this course to calculate percentiles
-            course_profs = prof_course[prof_course['Course Listing'] == course_code]
-            prof_gpas = course_profs['GPA'].tolist()
+            prof_gpas = [prof_course_dict.get((course, p), {}).get('GPA', np.nan) for p in profs]
+            prof_spots = [prof_course_spot.get((course, p), np.nan) for p in profs]
             
-            for _, p_row in course_profs.iterrows():
-                prof_name = p_row['Professor']
-                p_gpa = p_row['GPA']
+            for prof in profs:
+                p_spot = prof_course_spot.get((course, prof), np.nan)
+                p_gpa_data = prof_course_dict.get((course, prof), {})
                 
-                # Calculate the percentage of students who got an A or B
-                total = p_row['Total Graded']
-                a_pct = f"{(p_row['A Grades'] / total * 100):.1f}%" if total > 0 else "N/A"
-                b_pct = f"{(p_row['B Grades'] / total * 100):.1f}%" if total > 0 else "N/A"
+                p_gpa = p_gpa_data.get('GPA', np.nan)
+                total = p_gpa_data.get('Total Graded', 0)
                 
-                # If they never gave an A/B/C/D/F grade, skip showing them in the UI
-                if total == 0: continue 
+                if total > 0:
+                    a_pct = f"{(p_gpa_data.get('A Grades', 0) / total * 100):.1f}%"
+                    b_pct = f"{(p_gpa_data.get('B Grades', 0) / total * 100):.1f}%"
+                    total_str = str(int(total))
+                else:
+                    a_pct = "N/A"
+                    b_pct = "N/A"
+                    total_str = "N/A"
 
-                database["departments"][dept]["courses"][course_code]["professors"][prof_name] = {
+                database["departments"][dept]["courses"][course]["professors"][prof] = {
                     "overall_gpa": f"{p_gpa:.2f}" if not pd.isna(p_gpa) else "N/A",
                     "stats_rank": get_stats_rank(p_gpa, prof_gpas),
-                    "total_graded": int(total),
+                    "spot_score": f"{p_spot:.1f}%" if not pd.isna(p_spot) else "N/A",
+                    "spot_rank": get_stats_rank(p_spot, prof_spots),
+                    "total_graded": total_str,
                     "a_pct": a_pct,
                     "b_pct": b_pct
                 }
