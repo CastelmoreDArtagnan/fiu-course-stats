@@ -3,10 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FIU Stats For Good</title>
-  <meta name="description" content="FIU Stats For Good provides historical GPA averages and SPOT ratings for every Florida International University course and professor. Optimize your schedule today.">
+  
+  <title id="page-title">FIU Stats For Good | Course & Professor Ratings</title>
+  <meta name="description" id="meta-desc" content="FIU Stats For Good provides historical GPA averages and SPOT ratings for every Florida International University course and professor. Optimize your schedule today.">
   <meta name="keywords" content="FIU, Florida International University, FIU grades, FIU professors, FIU GPA, easy classes FIU, FIU SPOT ratings, schedule, courses">
   <meta name="author" content="The Hat Guy">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.statsforgood.com/">
+  <meta property="og:title" id="og-title" content="FIU Stats For Good | Course & Professor Ratings">
+  <meta property="og:description" id="og-desc" content="Historical GPA averages and SPOT ratings for every FIU course and professor.">
+  <meta property="og:site_name" content="FIU Stats For Good">
+
   <style>
     :root {
       --fiu-blue: #081E3F; --fiu-gold: #B6862C; --bg-light: #f4f4f9; --text-dark: #333;
@@ -41,14 +49,13 @@
     .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 1.5rem; border-left: 6px solid var(--fiu-gold); }
     .spacer { margin: 2rem 0; border-bottom: 2px solid #eee; }
     
-    /* New Symmetrical Flexbox Layout */
     .stats-container { display: flex; justify-content: space-between; align-items: flex-start; background-color: var(--bg-light); padding: 20px 25px; border-radius: 8px; border: 1px solid #e0e0e0; margin: 15px 0; }
     .stat-left { text-align: left; }
     .stat-right { text-align: right; }
     .stat-label { font-size: 0.85rem; color: #666; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; letter-spacing: 0.5px; }
     .stat-value { font-size: 1.5rem; font-weight: bold; color: var(--fiu-blue); margin-bottom: 0; }
     .stat-badge-wrapper { margin-top: 12px; }
-    .stat-badge-wrapper .badge { margin-left: 0; /* Override generic margin so it aligns flush left/right */ }
+    .stat-badge-wrapper .badge { margin-left: 0; }
     
     .badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px; color: white; font-weight: bold; font-size: 0.9rem; margin-left: 10px; white-space: nowrap; }
     .badge-A, .badge-Excellent { background-color: var(--rank-a); }
@@ -56,7 +63,6 @@
     .badge-C, .badge-Needs { background-color: var(--rank-c); }
     .badge-NA { background-color: var(--rank-na); }
 
-    /* Responsive Table Styles */
     .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
     table { width: 100%; border-collapse: collapse; min-width: 700px; background: white; }
     th, td { border: 1px solid #eee; padding: 12px; text-align: left; }
@@ -66,7 +72,6 @@
     
     .ta-disclaimer { background-color: #fff3cd !important; color: #856404; text-align: center; font-size: 0.85rem; font-style: italic; }
 
-    /* Mobile Swipe Animation */
     .swipe-hint { display: none; background-color: rgba(182, 134, 44, 0.1); color: var(--fiu-blue); text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; font-size: 0.9rem; border: 1px dashed var(--fiu-gold); }
     .swipe-hint span { display: inline-block; animation: swipe-move 1.5s infinite; }
     @keyframes swipe-move { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-8px); } }
@@ -113,10 +118,34 @@
 
     let db = {}, profDb = {}, searchIndex = [], profMap = {}, historyStack = [];
 
+    // --- SEO HELPER FUNCTION ---
+    function updateSEO(title, description) {
+        const fullTitle = title + " | FIU Stats For Good";
+        document.getElementById('page-title').innerText = fullTitle;
+        document.getElementById('meta-desc').setAttribute('content', description);
+        document.getElementById('og-title').setAttribute('content', fullTitle);
+        document.getElementById('og-desc').setAttribute('content', description);
+    }
+
     fetch('fiu_data.json')
       .then(res => res.json())
       .then(data => { 
         db = data.departments; profDb = data.professors || {}; buildSearchIndex(); 
+        
+        // --- DEEP LINK LISTENER ---
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('prof')) {
+            window.renderProfessor(urlParams.get('prof'));
+        } else if (urlParams.has('course')) {
+            const courseStr = urlParams.get('course');
+            const dept = courseStr.replace(/[^A-Z]/g, '');
+            const cCode = courseStr.replace(/([A-Z]+)/, '$1 ').trim();
+            if (db[dept] && db[dept].courses[cCode]) {
+                window.renderCourse(dept, cCode);
+            }
+        } else if (urlParams.has('dept')) {
+            if (db[urlParams.get('dept')]) window.renderDepartment(urlParams.get('dept'));
+        }
       })
       .catch(err => console.error("Data load failed.", err));
 
@@ -151,6 +180,19 @@
     function pushState(funcName, args) {
         historyStack.push({ fn: funcName, args: args });
         backBtn.style.display = 'block'; 
+        
+        let url = new URL(window.location);
+        if (funcName === 'renderCourse') {
+            url.searchParams.set('course', args[1].replace(' ', ''));
+            url.searchParams.delete('prof'); url.searchParams.delete('dept');
+        } else if (funcName === 'renderProfessor') {
+            url.searchParams.set('prof', args[0]);
+            url.searchParams.delete('course'); url.searchParams.delete('dept');
+        } else if (funcName === 'renderDepartment') {
+            url.searchParams.set('dept', args[0]);
+            url.searchParams.delete('course'); url.searchParams.delete('prof');
+        }
+        window.history.pushState({}, '', url);
     }
 
     function goBack() {
@@ -163,6 +205,10 @@
             resultsDiv.innerHTML = `<div style="text-align: center; color: #777; margin-top: 3rem;"><h3>Type Something :3</h3><p>(e.g., Search "EML", "Thermodynamics", or "Aaliyah Gray")</p></div>`;
             backBtn.style.display = 'none';
             searchBar.placeholder = 'Search a Department, Course Code, Name, or Instructor...';
+            window.history.pushState({}, '', window.location.pathname);
+            
+            // Reset SEO back to homepage defaults
+            updateSEO('Homepage', 'FIU Stats For Good provides historical GPA averages and SPOT ratings for every Florida International University course and professor.');
         }
     }
 
@@ -211,6 +257,10 @@
     window.renderDepartment = function(deptCode, isBackNav = false) {
       if(!isBackNav) pushState('renderDepartment', [deptCode]);
       const deptData = db[deptCode];
+      
+      // Update SEO
+      updateSEO(`FIU ${deptCode} Classes`, `Historic GPA and SPOT ratings for FIU's ${deptCode} department.`);
+      
       let html = `<div class="card">
                     <h2 style="margin-top:0; color:var(--fiu-blue);">Department: ${deptCode}</h2>
                     <p>Overall Department Historic GPA: <strong>${deptData.department_gpa}</strong></p>
@@ -243,6 +293,10 @@
       if(!isBackNav) pushState('renderCourse', [deptCode, courseCode]);
       const courseData = db[deptCode].courses[courseCode];
       const cTitle = courseData.course_name ? ` - ${courseData.course_name}` : '';
+      
+      // Update SEO
+      updateSEO(`FIU ${courseCode}${cTitle}`, `Average historic GPA and professor ratings for ${courseCode} at Florida International University.`);
+      
       let html = `<div class="card">
                     <h2 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">${courseCode}${cTitle}</h2>
                     <div class="stats-container">
@@ -307,6 +361,9 @@
       const coursesTaught = profMap[profName];
       const globalSpot = profDb[profName] ? profDb[profName].global_spot : "N/A";
       const globalRank = profDb[profName] ? profDb[profName].spot_rank : "N/A";
+      
+      // Update SEO
+      updateSEO(`${profName} - FIU Ratings`, `View GPA and SPOT score distributions for courses taught by ${profName} at FIU.`);
 
       let html = `<div class="card">
                     <h2 style="margin-top:0; color:var(--fiu-blue); margin-bottom:15px;">Instructor: ${profName}</h2>
