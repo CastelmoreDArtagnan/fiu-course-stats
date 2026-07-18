@@ -18,6 +18,24 @@
   <meta property="og:description" id="og-desc" content="Stats For Good provides historical GPA averages and SPOT ratings for every FIU course and professor. Find your next easy class.">
   <meta property="og:site_name" content="Stats For Good">
 
+  <!-- STRUCTURED DATA FOR GOOGLE -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Stats For Good",
+    "url": "https://www.statsforgood.com/",
+    "description": "An independent student database providing historical GPA averages and SPOT ratings for Florida International University courses and professors.",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "All",
+    "creator": {
+      "@type": "Person",
+      "name": "The Hat Guy"
+    }
+  }
+  </script>
+
+
   <style>
     :root {
       --fiu-blue: #081E3F; --fiu-gold: #B6862C; --bg-light: #f4f4f9; --text-dark: #333;
@@ -216,6 +234,7 @@
             
             // Reset SEO back to homepage defaults
             updateSEO('Homepage', 'FIU Stats For Good provides historical GPA averages and SPOT ratings for every Florida International University course and professor.');
+            document.getElementById('seo-content').style.display = 'block';
         }
     }
 
@@ -265,6 +284,8 @@
       if(!isBackNav) pushState('renderDepartment', [deptCode]);
       const deptData = db[deptCode];
       
+      document.getElementById('seo-content').style.display = 'none';
+
       // Update SEO
       updateSEO(`FIU ${deptCode} Classes`, `Historic GPA and SPOT ratings for FIU's ${deptCode} department.`);
       
@@ -300,7 +321,7 @@
       if(!isBackNav) pushState('renderCourse', [deptCode, courseCode]);
       const courseData = db[deptCode].courses[courseCode];
       const cTitle = courseData.course_name ? ` - ${courseData.course_name}` : '';
-      
+      document.getElementById('seo-content').style.display = 'none';
       // Update SEO
       updateSEO(`FIU ${courseCode}${cTitle}`, `Average historic GPA and professor ratings for ${courseCode} at Florida International University.`);
       
@@ -368,7 +389,7 @@
       const coursesTaught = profMap[profName];
       const globalSpot = profDb[profName] ? profDb[profName].global_spot : "N/A";
       const globalRank = profDb[profName] ? profDb[profName].spot_rank : "N/A";
-      
+      document.getElementById('seo-content').style.display = 'none';
       // Update SEO
       updateSEO(`${profName} - FIU Ratings`, `View GPA and SPOT score distributions for courses taught by ${profName} at FIU.`);
 
@@ -406,8 +427,28 @@
                    </div>`;
       });
       resultsDiv.innerHTML = html; resetSearchBar();
-    }
+    }    
   </script>
+  <!-- VISIBLE SEO CONTENT BLOCK (Hidden during searches) -->
+  <div class="container" id="seo-content" style="margin-top: 1rem; padding-top: 2rem; border-top: 2px solid #eee;">
+    <h3 style="color: var(--fiu-blue);">Optimize Your FIU Class Schedule</h3>
+    <p style="line-height: 1.6; color: #555;">Registration at Florida International University doesn't have to be a guessing game. <strong>Stats For Good</strong> aggregates thousands of rows of historical grading data to help you make informed decisions about your academic path. Whether you are balancing a heavy mechanical engineering course load, fulfilling University Core Curriculum (UCC) requirements, or trying to find the highest-rated professors, our database provides the transparency you need.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 2rem;">
+        <div class="card" style="margin-bottom: 0;">
+            <h4 style="margin-top: 0; color: var(--fiu-gold);">Historic GPA Distributions</h4>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 0;">Stop relying solely on subjective reviews to find a <strong>good FIU professor</strong>. We provide the actual average GPAs for specific courses and instructors, helping you understand the true difficulty and pass rates of your upcoming classes.</p>
+        </div>
+        <div class="card" style="margin-bottom: 0;">
+            <h4 style="margin-top: 0; color: var(--fiu-gold);">FIU Professor Ratings</h4>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 0;">Student Perceptions of Teaching (SPOT) scores offer insight into professor quality. We aggregate these <strong>FIU professor ratings</strong> so you can easily compare teaching effectiveness across different sections.</p>
+        </div>
+        <div class="card" style="margin-bottom: 0;">
+            <h4 style="margin-top: 0; color: var(--fiu-gold);">Schedule Optimization</h4>
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 0;">Don't sign up for classes blindly. Use our open-source database to analyze instructor track records and ensure your schedule is built for academic success.</p>
+        </div>
+    </div>
+  </div>
   <!-- SEMANTIC SEO FOOTER -->
   <footer style="margin-top: 4rem; padding: 2rem 1rem; text-align: center; color: #666; font-size: 0.85rem; border-top: 1px solid #ddd;">
     <p><strong>Stats For Good</strong> is an independent student database dedicated to grade transparency at Florida International University.</p>
