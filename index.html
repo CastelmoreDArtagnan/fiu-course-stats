@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="canonical" id="canonical-url" href="https://www.statsforgood.com/">
   
   <!-- DYNAMIC SEO TAGS -->
   <title id="page-title">Stats For Good | FIU Course & Professor Ratings</title>
@@ -122,11 +123,15 @@
 
     // --- SEO HELPER FUNCTION ---
     function updateSEO(title, description) {
-        const fullTitle = title + " | FIU Stats For Good";
+        const fullTitle = title + " | Stats For Good";
         document.getElementById('page-title').innerText = fullTitle;
         document.getElementById('meta-desc').setAttribute('content', description);
         document.getElementById('og-title').setAttribute('content', fullTitle);
         document.getElementById('og-desc').setAttribute('content', description);
+        
+        // NEW: Force Google to index this exact programmatic parameter
+        const canonicalUrl = "https://www.statsforgood.com/" + window.location.search;
+        document.getElementById('canonical-url').setAttribute('href', canonicalUrl);
     }
 
     fetch('fiu_data.json')
